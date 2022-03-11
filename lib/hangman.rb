@@ -8,7 +8,7 @@ class Hangman
   MAX_NUM_OF_GUESSES = 8
   GAMESAVE_FILENAME = 'gamesave.yaml'
   def initialize
-    if File.exist?(GAMESAVE_FILENAME)
+    if gamesave_available? && player_want_to_load_save?
       load_game
     else
       @word = random_word
@@ -18,7 +18,8 @@ class Hangman
   end
 
   def play
-    # p @word
+    puts 'Make a guess by typing a letter or an entire word'
+    puts 'Save and quit by pressing enter while not entering any value'
     until game_over?
       print_positions
       show_result
@@ -29,6 +30,19 @@ class Hangman
   end
 
   private
+
+  def gamesave_available?
+    File.exist?(GAMESAVE_FILENAME)
+  end
+
+  def player_want_to_load_save?
+    choice = ''
+    until %w[y n].include?(choice)
+      print 'Do you want to load your saved progress? y/n '
+      choice = gets.chomp
+    end
+    choice == 'y'
+  end
 
   def to_yaml
     YAML.dump({
