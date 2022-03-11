@@ -1,42 +1,104 @@
 # frozen_string_literal: true
+
 require 'pry-byebug'
+require 'yaml'
 
 # Hangman class
 class Hangman
-  NUM_OF_GUESSES = 8
+  MAX_NUM_OF_GUESSES = 8
+  GAMESAVE_FILENAME = 'gamesave.yaml'
   def initialize
-    @word = random_word
-    @used_letters = []
-    p @word
-  end
-
-  def play
-    until game_over?
-      show_result
-      make_guess
+    if File.exist?(GAMESAVE_FILENAME)
+      load_game
+    else
+      @word = random_word
+      @used_letters = []
+      @guessed_words = []
     end
   end
 
+  def play
+    # p @word
+    until game_over?
+      print_positions
+      make_guess
+      show_result
+    end
+    delete_gamesave
+  end
+
   private
+
+  def to_yaml
+    YAML.dump({
+                word: @word,
+                used_letters: @used_letters,
+                guessed_words: @guessed_words
+              })
+  end
+
+  def save_and_exit
+    save_game
+    puts 'Exiting game'
+    exit
+  end
+
+  def save_game
+    File.open(GAMESAVE_FILENAME, 'w') { |file| file.write(to_yaml) }
+    puts 'Game saved'
+  end
+
+  def load_game
+    data = YAML.load(File.read(GAMESAVE_FILENAME))
+    @word = data[:word]
+    @used_letters = data[:used_letters]
+    @guessed_words = data[:guessed_words]
+  end
+
+  def delete_gamesave
+    File.delete(GAMESAVE_FILENAME) if File.exist?(GAMESAVE_FILENAME)
+  end
 
   def game_over?
     word_found? || out_of_guesses?
   end
 
   def out_of_guesses?
-    return true if @used_letters.length >= NUM_OF_GUESSES
+    return true if num_of_guesses >= MAX_NUM_OF_GUESSES
   end
 
   def word_found?
-    @word.split('').each do |letter|
-      return false unless @used_letters.include?(letter)
-    end
-    puts 'You won!'
+    return false unless guessed_all_letters? || guessed_exact_word?
+
     true
   end
 
+  def guessed_all_letters?
+    @word.split('').each do |letter|
+      return false unless @used_letters.include?(letter)
+    end
+    true
+  end
+
+  def guessed_exact_word?
+    @guessed_words.last == @word
+  end
+
+  def num_of_guesses
+    @used_letters.length + @guessed_words.length
+  end
+
   def show_result
-    print "Guesses left: #{8 - @used_letters.length}\t\t"
+    if word_found?
+      puts "You won! The correct word was #{@word}"
+    elsif out_of_guesses?
+      puts "You lost. The correct word was #{@word}"
+    else
+      puts "Guesses left: #{8 - num_of_guesses}\t\t"
+    end
+  end
+
+  def print_positions
     @word.split('').each do |letter|
       if @used_letters.include?(letter)
         print "#{letter} "
@@ -48,16 +110,27 @@ class Hangman
   end
 
   def make_guess
-    guess = ''
+    guess = nil
     until valid_guess?(guess)
       print 'Make a guess: '
       guess = gets.chomp.downcase
     end
-    @used_letters.push(guess)
+    if guess.length == 1
+      @used_letters.push(guess)
+    elsif guess.length > 1
+      @guessed_words.push(guess)
+    elsif guess.empty?
+      save_and_exit
+    end
   end
 
   def valid_guess?(guess)
-    # binding.pry
+    return false if guess.nil?
+
+    possible_letter?(guess) || guess.length > 1 || guess.empty?
+  end
+
+  def possible_letter?(guess)
     guess.length == 1 && guess.match?(/[[:alpha:]]/) && !@used_letters.include?(guess)
   end
 
