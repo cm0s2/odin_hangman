@@ -21,8 +21,9 @@ class Hangman
     # p @word
     until game_over?
       print_positions
-      make_guess
       show_result
+      make_guess
+      show_result if game_over?
     end
     delete_gamesave
   end
@@ -94,7 +95,7 @@ class Hangman
     elsif out_of_guesses?
       puts "You lost. The correct word was #{@word}"
     else
-      puts "Guesses left: #{8 - num_of_guesses}\t\t"
+      puts "Guesses left: #{8 - num_of_guesses}. Used letters: #{@used_letters.join(', ')}"
     end
   end
 
